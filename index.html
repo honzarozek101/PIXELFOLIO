@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Portfolio</title>
+<style>
+:root{
+  --bg:#0b0d12; --fg:#f2f4f8; --btn:rgba(255,255,255,.10); --btn-hover:rgba(255,255,255,.22);
+  --panel-bg:#f7f8fb; --panel-ink:#141821; --panel-muted:#5b6474; --panel-line:#d8dde7;
+  --panel-track:#d3d9e4; --accent:#2a55ff; --accent-ink:#ffffff; --chip:#eceff5; --chip-hover:#e0e5ef;
+  --panel-shadow:0 12px 40px rgba(20,24,33,.25);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --panel-bg:#1a1d25; --panel-ink:#e9ebf1; --panel-muted:#98a0b0; --panel-line:#2b303b;
+    --panel-track:#333a48; --accent:#7a97ff; --accent-ink:#0d1226; --chip:#242833; --chip-hover:#2d3240;
+    --panel-shadow:0 12px 40px rgba(0,0,0,.55);
+  }
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  background:var(--bg); color:var(--fg); overflow:hidden;
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  font-size:14px; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
+}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#bgImg{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;display:none}
+#fallback{
+  position:fixed;inset:0;width:100%;height:100%;object-fit:contain;padding:5vmin;
+  display:none;pointer-events:none;
+}
+#fallback.on{display:block}
+
+/* ---------- postranní tlačítka (nejsou součástí pixelové grafiky) ---------- */
+.nav{
+  position:fixed; top:50%; transform:translateY(-50%); z-index:10;
+  width:68px; height:150px; border-radius:26px; border:0; padding:0; cursor:pointer;
+  display:grid; place-items:center; color:var(--fg); background:var(--btn);
+  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+  transition:background .15s, transform .15s;
+}
+.nav svg{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.nav:hover{background:var(--btn-hover)}
+.nav:active{transform:translateY(-50%) scale(.96)}
+.nav:focus-visible{outline:2px solid var(--fg);outline-offset:3px}
+.prev{left:20px} .next{right:20px}
+.nav[hidden]{display:none}
+
+/* ---------- hamburger ---------- */
+.menuBtn{
+  position:fixed; left:20px; top:20px; z-index:22;
+  width:50px; height:50px; border-radius:16px; border:0; padding:0; cursor:pointer;
+  display:grid; place-items:center; color:var(--fg); background:var(--btn);
+  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+  transition:background .15s, transform .15s;
+}
+.menuBtn svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.3;stroke-linecap:round}
+.menuBtn:hover{background:var(--btn-hover)}
+.menuBtn:active{transform:scale(.94)}
+
+/* ---------- popisek a nápověda ---------- */
+.caption{
+  position:fixed; left:50%; bottom:18px; transform:translateX(-50%); z-index:5;
+  display:flex; flex-direction:column; align-items:center; gap:2px; text-align:center;
+  pointer-events:none; max-width:calc(100% - 180px);
+}
+.caption b{font-size:15px;font-weight:600;letter-spacing:.01em}
+.caption span{font-size:12.5px;opacity:.6}
+.caption:empty{display:none}
+
+.toast{
+  position:fixed; left:50%; top:16px; transform:translateX(-50%); z-index:20;
+  background:rgba(16,18,24,.82); color:#f2f4f8; border-radius:999px; padding:8px 16px;
+  font-size:13px; max-width:calc(100% - 32px); text-align:center; opacity:0; pointer-events:none; transition:opacity .2s;
+}
+.toast.show{opacity:1}
+
+/* ---------- panel (nastavení rozpixelování) ---------- */
+.scrim{
+  position:fixed; inset:0; background:rgba(8,9,13,.45); opacity:0; pointer-events:none;
+  transition:opacity .22s; z-index:24;
+}
+.scrim.on{opacity:1;pointer-events:auto}
+.panel{
+  position:fixed; top:0; left:0; height:100%; width:360px; max-width:88vw; z-index:25;
+  background:var(--panel-bg); color:var(--panel-ink); box-shadow:var(--panel-shadow);
+  display:flex; flex-direction:column; transform:translateX(-100%); transition:transform .25s ease;
+}
+.panel.open{transform:translateX(0)}
+.panel header{padding:18px 18px 10px}
+.panelTop{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.panel h2{margin:0;font-size:18px;font-weight:700;letter-spacing:-.01em}
+.panel header p{margin:6px 0 0;color:var(--panel-muted);font-size:12.5px;line-height:1.4}
+.iconBtn{
+  background:var(--chip); border:0; border-radius:9px; width:32px;height:32px;flex:0 0 auto;
+  display:grid;place-items:center;cursor:pointer;
+}
+.iconBtn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+.iconBtn:hover{background:var(--chip-hover)}
+.scroll{overflow-y:auto;flex:1;min-height:0;padding:0 18px 18px;scrollbar-width:thin}
+
+.row2{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.btn{
+  background:var(--chip); border:1px solid transparent; border-radius:8px; padding:7px 11px;
+  cursor:pointer; font-weight:500; font-size:13px;
+}
+.btn:hover{background:var(--chip-hover)}
+.btn[aria-pressed="true"]{background:var(--panel-ink);color:var(--panel-bg)}
+.label-sm{margin:16px 0 6px;font-size:12.5px;color:var(--panel-muted);font-weight:500}
+
+details{border-top:1px solid var(--panel-line);margin-top:16px}
+details:first-of-type{margin-top:8px}
+summary{
+  list-style:none; cursor:pointer; padding:12px 0 8px; font-weight:650; font-size:14.5px;
+  display:flex; align-items:center; gap:8px;
+}
+summary::-webkit-details-marker{display:none}
+summary::before{
+  content:""; width:7px; height:7px; border-right:2px solid var(--panel-muted); border-bottom:2px solid var(--panel-muted);
+  transform:rotate(-45deg); transition:transform .15s; margin:0 3px 0 2px;
+}
+details[open] > summary::before{transform:rotate(45deg)}
+.body{padding:2px 0 6px;display:flex;flex-direction:column;gap:11px}
+
+.ctl .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.ctl .lab{font-size:13.5px}
+.ctl output{font-size:13px;color:var(--panel-muted);white-space:nowrap}
+.ctl .hint{margin:1px 0 0;font-size:12px;color:var(--panel-muted)}
+.chk{display:flex;align-items:center;gap:9px;cursor:pointer;font-size:13.5px}
+.chk input{width:16px;height:16px;accent-color:var(--accent);margin:0}
+.sel{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13.5px}
+select{
+  background:var(--chip); border:1px solid var(--panel-line); border-radius:8px; padding:6px 8px; max-width:190px;
+}
+.colorrow{display:flex;align-items:center;gap:8px;font-size:13.5px}
+.colorrow .grow{flex:1}
+input[type=color]{
+  width:34px;height:28px;padding:0;border:1px solid var(--panel-line);border-radius:7px;background:transparent;cursor:pointer;
+}
+.sw{width:28px;height:28px;border-radius:7px;border:1px solid var(--panel-line);cursor:pointer;padding:0}
+
+input[type=range]{
+  -webkit-appearance:none;appearance:none;width:100%;height:22px;background:transparent;margin:0;cursor:pointer;
+}
+input[type=range]::-webkit-slider-runnable-track{
+  height:4px;border-radius:2px;
+  background:linear-gradient(to right,var(--accent) var(--p,50%),var(--panel-track) var(--p,50%));
+}
+input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:var(--panel-track)}
+input[type=range]::-moz-range-progress{height:4px;border-radius:2px;background:var(--accent)}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:16px;height:16px;margin-top:-6px;border-radius:50%;
+  background:var(--accent);border:3px solid var(--panel-bg);box-shadow:0 0 0 1px var(--accent);
+}
+input[type=range]::-moz-range-thumb{
+  width:10px;height:10px;border-radius:50%;background:var(--accent);border:3px solid var(--panel-bg);box-shadow:0 0 0 1px var(--accent);
+}
+
+.copyBtn{
+  width:100%; margin-top:18px; background:var(--accent); color:var(--accent-ink); border:0;
+  border-radius:10px; padding:11px 14px; cursor:pointer; font-weight:650; font-size:13.5px;
+}
+.copyBtn:hover{filter:brightness(1.06)}
+.copyHint{margin:7px 0 0;font-size:12px;color:var(--panel-muted);word-break:break-all}
+.copyBox{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.copyBox[hidden]{display:none}
+.copyBox textarea{
+  width:100%;height:120px;resize:vertical;background:var(--chip);color:var(--panel-ink);
+  border:1px solid var(--panel-line);border-radius:8px;padding:8px;font:11.5px/1.4 ui-monospace,Menlo,Consolas,monospace;
+}
+.copyBox p{margin:0;font-size:12px;color:var(--panel-muted)}
+
+@media (max-width:600px){
+  .nav{width:52px;height:110px;border-radius:20px} .prev{left:10px} .next{right:10px}
+  .caption{max-width:calc(100% - 130px)}
+  .menuBtn{left:12px;top:12px}
+}
+</style>
+</head>
+<body>
+<img id="bgImg" alt="">
+<canvas id="cv"></canvas>
+<img id="fallback" alt="">
+
+<button class="menuBtn" id="bMenu" type="button" aria-label="Nastavení rozpixelování" aria-expanded="false">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+</button>
+
+<button class="nav prev" id="prev" type="button" aria-label="Předchozí">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+</button>
+<button class="nav next" id="next" type="button" aria-label="Další">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+</button>
+
+<div class="caption" id="caption"></div>
+<div class="toast" id="toast" role="status"></div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="panel" id="panel" aria-label="Nastavení rozpixelování">
+  <header>
+    <div class="panelTop">
+      <h2 id="panelTitle">Nastavení</h2>
+      <button class="iconBtn" id="bClose" type="button" aria-label="Zavřít">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <p>Upravuje se rozpixelování PRÁVĚ zobrazeného obrázku. Změny se samy neukládají – tlačítkem dole je zkopíruješ do jeho config souboru.</p>
+  </header>
+  <div class="scroll">
+    <div class="row2" id="actions">
+      <button class="btn" id="bPause" type="button" aria-pressed="false">Pozastavit</button>
+      <button class="btn" id="bReset" type="button">Složit obrázek</button>
+      <button class="btn" id="bBoom" type="button">Výbuch</button>
+      <button class="btn" id="bScatter" type="button">Rozprášit</button>
+    </div>
+
+    <p class="label-sm">Předvolby chování</p>
+    <div class="row2" id="presets" style="margin-top:0"></div>
+
+    <div id="controls"></div>
+
+    <button class="copyBtn" id="bCopy" type="button">Zkopírovat nastavení pro tenhle obrázek</button>
+    <p class="copyHint" id="copyHint"></p>
+    <div class="copyBox" id="copyBox" hidden>
+      <textarea id="copyText" readonly></textarea>
+      <p>Schránka nešla použít automaticky – označ text (Ctrl/Cmd+A) a zkopíruj ručně (Ctrl/Cmd+C), pak vlož do souboru výše.</p>
+    </div>
+  </div>
+</aside>
+
+<script src="config.js"></script>
+<script>
+(() => {
+'use strict';
+
+const $ = s => document.querySelector(s);
+const cv = $('#cv'), toastEl = $('#toast'), capEl = $('#caption'), fbEl = $('#fallback'), bgImgEl = $('#bgImg');
+const prevBtn = $('#prev'), nextBtn = $('#next');
+
+const C = window.PORTFOLIO_CONFIG;
+if (!C) { document.body.textContent = 'Chybí soubor config.js'; return; }
+
+const gl = cv.getContext('webgl', { antialias: false, alpha: true });
+if (!gl) { document.body.textContent = 'WebGL není v tomto prohlížeči dostupné.'; return; }
+
+const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const MAXP = 70000;      // maximální počet částic
+const VMAX = 30;         // maximální rychlost (px / krok)
+
+/* =====================================================================
+   Výchozí hodnoty (config.js je přepisuje)
+   ===================================================================== */
+const DEF = {
+  step: 5, imgScale: 90, alphaCut: 40, scatterIn: !reduceMotion, bg: '#0b0d12',
+  collide: true, sizeF: 0.92, rest: 0.45, iters: 2, walls: true,
+  spring: 0.012, friction: 0.05, gravX: 0, gravY: 0, turb: 0, speed: 1,
+  pair: 0, affinity: 0, reach: 3,
+  mouseMode: 'repel', mouseR: 110, mouseStr: 1.5, clickBurst: true,
+  colorMode: 'orig', visSize: 1.25, round: true, additive: false,
+};
+
+/* =====================================================================
+   Definice ovládacích prvků panelu (nastavení rozpixelování)
+   ===================================================================== */
+const SECTIONS = [
+  { title: 'Obrázek', open: true, controls: [
+    { id: 'step', label: 'Velikost částice', min: 2, max: 16, step: 0.5, def: DEF.step, unit: ' px', rebuild: true,
+      hint: 'Menší částice = víc částic i vyšší zátěž.' },
+    { id: 'imgScale', label: 'Velikost obrázku', min: 20, max: 120, step: 1, def: DEF.imgScale, unit: ' %', rebuild: true },
+    { id: 'alphaCut', label: 'Práh průhlednosti', min: 1, max: 250, step: 1, def: DEF.alphaCut, rebuild: true,
+      hint: 'Pixely průhlednější než práh se přeskočí.' },
+    { id: 'scatterIn', type: 'check', label: 'Po načtení složit z chaosu', def: DEF.scatterIn },
+    { id: 'bg', type: 'color', label: 'Pozadí', def: DEF.bg },
+  ]},
+  { title: 'Kolize', open: true, reset: true, controls: [
+    { id: 'collide', type: 'check', label: 'Částice se srážejí', def: DEF.collide },
+    { id: 'sizeF', label: 'Kolizní velikost', min: 0.3, max: 1.6, step: 0.01, def: DEF.sizeF,
+      hint: 'Nad 1 se sousední částice překrývají a odtlačují.' },
+    { id: 'rest', label: 'Odrazivost', min: 0, max: 1, step: 0.01, def: DEF.rest },
+    { id: 'iters', label: 'Přesnost kolizí', min: 1, max: 4, step: 1, def: DEF.iters, unit: '×' },
+    { id: 'walls', type: 'check', label: 'Odrážet od okrajů plochy', def: DEF.walls },
+  ]},
+  { title: 'Síly', open: true, reset: true, controls: [
+    { id: 'spring', label: 'Návrat na původní místo', min: 0, max: 0.1, step: 0.001, def: DEF.spring },
+    { id: 'friction', label: 'Tření', min: 0, max: 0.3, step: 0.005, def: DEF.friction },
+    { id: 'gravX', label: 'Gravitace vodorovně', min: -0.5, max: 0.5, step: 0.01, def: DEF.gravX, sign: true },
+    { id: 'gravY', label: 'Gravitace svisle', min: -0.5, max: 0.5, step: 0.01, def: DEF.gravY, sign: true },
+    { id: 'turb', label: 'Chvění', min: 0, max: 2, step: 0.01, def: DEF.turb },
+    { id: 'speed', label: 'Rychlost simulace', min: 0.2, max: 2, step: 0.05, def: DEF.speed, unit: '×' },
+  ]},
+  { title: 'Interakce mezi částicemi', reset: true, controls: [
+    { id: 'pair', label: 'Přitahování ↔ odpuzování', min: -1, max: 1, step: 0.01, def: DEF.pair, sign: true,
+      hint: 'Vlevo se částice přitahují, vpravo odpuzují.' },
+    { id: 'affinity', label: 'Barevná příbuznost', min: 0, max: 1, step: 0.01, def: DEF.affinity,
+      hint: 'Podobné barvy se přitahují, odlišné odpuzují.' },
+    { id: 'reach', label: 'Dosah', min: 1.5, max: 6, step: 0.1, def: DEF.reach, unit: '× částice',
+      hint: 'Větší dosah zvyšuje zátěž procesoru.' },
+  ]},
+  { title: 'Myš a dotyk', controls: [
+    { id: 'mouseMode', type: 'select', label: 'Chování kurzoru', def: DEF.mouseMode, options: [
+        ['repel', 'Odpuzuje'], ['attract', 'Přitahuje'], ['swirl', 'Vytváří vír'],
+        ['ball', 'Pevná koule'], ['off', 'Vypnuto']] },
+    { id: 'mouseR', label: 'Poloměr', min: 20, max: 300, step: 1, def: DEF.mouseR, unit: ' px' },
+    { id: 'mouseStr', label: 'Síla', min: 0, max: 5, step: 0.05, def: DEF.mouseStr },
+    { id: 'clickBurst', type: 'check', label: 'Klik vytvoří výbuch', def: DEF.clickBurst },
+  ]},
+  { title: 'Vzhled', controls: [
+    { id: 'colorMode', type: 'select', label: 'Barvy částic', def: DEF.colorMode, options: [
+        ['orig', 'Původní z obrázku'], ['heat', 'Podle rychlosti'], ['flash', 'Záblesk při pohybu']] },
+    { id: 'visSize', label: 'Velikost vykreslení', min: 0.5, max: 2.5, step: 0.05, def: DEF.visSize, unit: '×' },
+    { id: 'round', type: 'check', label: 'Kulaté částice', def: DEF.round },
+    { id: 'additive', type: 'check', label: 'Svit (aditivní míchání barev)', def: DEF.additive },
+  ]},
+];
+
+const PRESETS = {
+  'Výchozí':       {},
+  'Pružná látka':  { spring: 0.02, friction: 0.06, rest: 0.5 },
+  'Písek':         { spring: 0, friction: 0.01, gravY: 0.25, rest: 0.12, sizeF: 1, iters: 3 },
+  'Kapalina':      { spring: 0, friction: 0.02, gravY: 0.18, rest: 0.05, pair: -0.25, reach: 2.5, iters: 3 },
+  'Plyn':          { spring: 0, friction: 0, rest: 1, turb: 0.5, sizeF: 0.8 },
+  'Vesmír':        { spring: 0, friction: 0.001, rest: 1, pair: -0.3, reach: 5, sizeF: 0.8 },
+  'Třídění barev': { spring: 0.001, friction: 0.05, turb: 0.35, affinity: 0.8, reach: 4, rest: 0.3 },
+};
+
+/* =====================================================================
+   Položky: Intro + projekty
+
+   Nastavení částic (rozpixelování, fyzika, barvy…) pro každý obrázek
+   se hledá v tomto pořadí – vyhrává první, které existuje:
+     1) src/<název_obrázku>_config.js  – samostatný soubor jen pro tenhle PNG
+                                          (Intro.png → src/Intro_config.js,
+                                           projekt_01.png → src/projekt_01_config.js …)
+     2) "settings" u daného projektu/intra v config.js (pokud je vyplněné)
+     3) "projectSettings" v config.js  – společná záloha (fallback)
+     4) vestavěné výchozí hodnoty (DEF)
+
+   Adresy (url) a popisky (title) se berou VŽDY jen z hlavního config.js.
+   Panel v hamburger menu upravuje jen aktuálně zobrazenou položku a
+   tlačítkem "Zkopírovat nastavení" jde výsledek přenést zpátky do
+   příslušného src/<obrázek>_config.js souboru.
+
+   STEJNÝM ZPŮSOBEM funguje i volitelný OBRÁZEK NA POZADÍ (za částicemi):
+     1) src/<název_obrázku>_background.png  – pozadí jen pro tenhle PNG
+                                               (projekt_01.png → src/projekt_01_background.png …)
+     2) src/background.png                  – společné pozadí pro všechny, co nemají vlastní
+     3) když neexistuje ani jedno, použije se obyčejná barva "bg" z nastavení
+   ===================================================================== */
+window.PORTFOLIO_ITEM_CONFIGS = window.PORTFOLIO_ITEM_CONFIGS || {};
+const pad2 = n => String(n).padStart(2, '0');
+let folder = C.srcFolder == null ? 'src/' : String(C.srcFolder);
+if (folder && !folder.endsWith('/')) folder += '/';
+const stripExt = f => f.replace(/\.(png|jpe?g|webp|gif)$/i, '');
+function loadScript(src) {
+  return new Promise(resolve => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = () => resolve(true);
+    s.onerror = () => resolve(false);   // soubor neexistuje – v pořádku, použije se fallback
+    document.head.appendChild(s);
+  });
+}
+function loadImageQuiet(src) {
+  return new Promise(resolve => {
+    const im = new Image();
+    im.onload = () => resolve(src);
+    im.onerror = () => resolve(null);   // soubor neexistuje – v pořádku, zkusí se fallback
+    im.src = src;
+  });
+}
+function pickSettings(file, inlineSettings) {
+  return Object.assign({}, DEF, C.projectSettings, inlineSettings, window.PORTFOLIO_ITEM_CONFIGS[file]);
+}
+
+const intro = C.intro || {};
+let entries = [];
+
+async function boot() {
+  const introFile = intro.file || 'Intro.png';
+  const projectFiles = (C.projects || []).map((p, i) => p.file || ('projekt_' + pad2(i + 1) + '.png'));
+  const allFiles = [introFile, ...projectFiles];
+
+  // Souběžně: per-PNG config soubory, per-PNG pozadí a společné fallback pozadí.
+  const [, ownBg, fallbackBg] = await Promise.all([
+    Promise.all(allFiles.map(f => loadScript(folder + encodeURI(stripExt(f) + '_config.js')))),
+    Promise.all(allFiles.map(f => loadImageQuiet(folder + encodeURI(stripExt(f) + '_background.png')))),
+    loadImageQuiet(folder + 'background.png'),
+  ]);
+  const bgFor = idx => ownBg[idx] || fallbackBg || '';
+
+  entries = [{
+    src: folder + encodeURI(introFile),
+    file: introFile,
+    bgSrc: bgFor(0),
+    url: intro.url || '',
+    title: intro.title || 'Intro',
+    settings: pickSettings(introFile, intro.settings),
+  }];
+  (C.projects || []).forEach((p, i) => {
+    const file = projectFiles[i];
+    entries.push({
+      src: folder + encodeURI(file),
+      file: file,
+      bgSrc: bgFor(i + 1),
+      url: p.url || '',
+      title: p.title || '',
+      settings: pickSettings(file, p.settings),
+    });
+  });
+  document.title = C.siteTitle || 'Portfolio';
+  if (entries.length < 2) { prevBtn.hidden = nextBtn.hidden = true; }
+
+  buildUI();
+  resize();
+  applySettings(entries[0].settings);
+  requestAnimationFrame(frame);
+  show(0);
+}
+
+/* =====================================================================
+   Stav
+   ===================================================================== */
+const P = Object.assign({}, DEF);
+let W = 800, H = 600, dpr = 1;
+let img = null;
+let N = 0, spacing = 5, radius = 2.3, capped = false;
+let px, py, vx, vy, hx, hy, col, rb, cellOf, nextArr;
+let head = new Int32Array(1);
+let bg = [0.043, 0.051, 0.071];
+let builtW = 0, builtH = 0;
+let leaving = false;                 // částice se rozlétají pryč před příchodem dalšího obrázku
+let tainted = false;                 // prohlížeč nedovolí číst pixely (typicky file://)
+let paused = false;
+let hasBgImage = false;              // true = za částicemi je obrázek, canvas se maluje průhledně
+const mouse = { active: false };
+let mx = 0, my = 0, pmx = 0, pmy = 0, mvx = 0, mvy = 0;
+
+/* =====================================================================
+   WebGL vykreslování
+   ===================================================================== */
+const VS = `
+attribute vec3 aPos;
+attribute vec4 aColor;
+uniform vec2 uRes;
+uniform float uSize, uMode, uHeat;
+varying vec4 vColor;
+vec3 heat(float s){
+  vec3 a = vec3(0.16,0.28,0.95), b = vec3(0.10,0.85,0.90), c = vec3(1.0,0.82,0.18), d = vec3(1.0,0.35,0.30);
+  vec3 h = mix(a, b, smoothstep(0.0, 0.35, s));
+  h = mix(h, c, smoothstep(0.3, 0.7, s));
+  return mix(h, d, smoothstep(0.65, 1.0, s));
+}
+void main(){
+  vec2 c = aPos.xy / uRes * 2.0 - 1.0;
+  gl_Position = vec4(c.x, -c.y, 0.0, 1.0);
+  gl_PointSize = uSize;
+  float s = clamp(aPos.z * uHeat, 0.0, 1.0);
+  vec3 rgb = aColor.rgb;
+  if (uMode > 0.5 && uMode < 1.5) rgb = heat(s);
+  else if (uMode >= 1.5) rgb = mix(rgb, vec3(1.0), s * 0.9);
+  vColor = vec4(rgb, aColor.a);
+}`;
+const FS = `
+precision mediump float;
+uniform float uRound;
+varying vec4 vColor;
+void main(){
+  float a = vColor.a;
+  if (uRound > 0.5) {
+    vec2 p = gl_PointCoord * 2.0 - 1.0;
+    float d = dot(p, p);
+    if (d > 1.0) discard;
+    a *= 1.0 - smoothstep(0.72, 1.0, d);
+  }
+  gl_FragColor = vec4(vColor.rgb, a);
+}`;
+function compile(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s));
+  return s;
+}
+const prog = gl.createProgram();
+gl.attachShader(prog, compile(gl.VERTEX_SHADER, VS));
+gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FS));
+gl.linkProgram(prog);
+gl.useProgram(prog);
+const loc = {
+  aPos: gl.getAttribLocation(prog, 'aPos'), aColor: gl.getAttribLocation(prog, 'aColor'),
+  uRes: gl.getUniformLocation(prog, 'uRes'), uSize: gl.getUniformLocation(prog, 'uSize'),
+  uMode: gl.getUniformLocation(prog, 'uMode'), uHeat: gl.getUniformLocation(prog, 'uHeat'),
+  uRound: gl.getUniformLocation(prog, 'uRound'),
+};
+const posBuf = gl.createBuffer(), colBuf = gl.createBuffer();
+const maxPt = gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE)[1] || 64;
+
+function draw() {
+  // Když je za částicemi obrázek na pozadí, plátno se musí vyčistit na
+  // ryze průhlednou (0,0,0,0) – ne na barvu "bg" s alfa 0 – jinak by ji
+  // prohlížeč kvůli premultiplied alpha stejně "prosvítil" na obrázek.
+  if (hasBgImage) gl.clearColor(0, 0, 0, 0);
+  else gl.clearColor(bg[0], bg[1], bg[2], 1);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  if (!N) return;
+  for (let i = 0, k = 0; i < N; i++, k += 3) {
+    rb[k] = px[i]; rb[k + 1] = py[i];
+    const a = vx[i], b = vy[i];
+    rb[k + 2] = Math.sqrt(a * a + b * b);
+  }
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, P.additive ? gl.ONE : gl.ONE_MINUS_SRC_ALPHA);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+  gl.bufferSubData(gl.ARRAY_BUFFER, 0, rb);
+  gl.enableVertexAttribArray(loc.aPos);
+  gl.vertexAttribPointer(loc.aPos, 3, gl.FLOAT, false, 12, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, colBuf);
+  gl.enableVertexAttribArray(loc.aColor);
+  gl.vertexAttribPointer(loc.aColor, 4, gl.UNSIGNED_BYTE, true, 4, 0);
+
+  const mode = P.colorMode === 'heat' ? 1 : P.colorMode === 'flash' ? 2 : 0;
+  gl.uniform2f(loc.uRes, W, H);
+  gl.uniform1f(loc.uSize, Math.min(maxPt, Math.max(1, 2 * radius * P.visSize * dpr)));
+  gl.uniform1f(loc.uMode, mode);
+  gl.uniform1f(loc.uHeat, 1 / 8);
+  gl.uniform1f(loc.uRound, P.round ? 1 : 0);
+  gl.drawArrays(gl.POINTS, 0, N);
+}
+
+/* =====================================================================
+   Načtení obrázku a převod pixelů na částice
+   ===================================================================== */
+function toCanvas(src) {
+  const w = src.width || src.naturalWidth, h = src.height || src.naturalHeight;
+  const s = Math.min(1, 4096 / Math.max(w, h));
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(w * s)); c.height = Math.max(1, Math.round(h * s));
+  c.getContext('2d').drawImage(src, 0, 0, c.width, c.height);
+  return c;
+}
+
+function sampleImage(src, cols, rows) {
+  const smooth = cols < src.width || rows < src.height;
+  let cur = src, cw = src.width, ch = src.height;
+  while (smooth && cw >= cols * 2 && ch >= rows * 2) {
+    const nw = Math.max(cols, Math.floor(cw / 2)), nh = Math.max(rows, Math.floor(ch / 2));
+    const c = document.createElement('canvas'); c.width = nw; c.height = nh;
+    const x = c.getContext('2d'); x.imageSmoothingQuality = 'high';
+    x.drawImage(cur, 0, 0, nw, nh);
+    cur = c; cw = nw; ch = nh;
+  }
+  const out = document.createElement('canvas'); out.width = cols; out.height = rows;
+  const ctx = out.getContext('2d', { willReadFrequently: true });
+  ctx.imageSmoothingEnabled = smooth; ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(cur, 0, 0, cols, rows);
+  return ctx.getImageData(0, 0, cols, rows).data;   // při file:// vyhodí SecurityError
+}
+
+function buildParticles(scatter) {
+  if (!img) return;
+  const fit = Math.min(W * 0.9 / img.width, H * 0.9 / img.height);
+  const sc = fit * P.imgScale / 100;
+  const iw = img.width * sc, ih = img.height * sc;
+
+  let stp = P.step;
+  capped = false;
+  while ((iw / stp) * (ih / stp) > MAXP) { stp *= 1.06; capped = true; }
+  const cols = Math.max(1, Math.round(iw / stp)), rows = Math.max(1, Math.round(ih / stp));
+  const sx = iw / cols, sy = ih / rows;
+  spacing = (sx + sy) / 2;
+
+  let data;
+  try { data = sampleImage(img, cols, rows); }
+  catch (err) {
+    N = 0; tainted = true;
+    fbEl.src = currentSrc; fbEl.classList.add('on');
+    toast('Efekt částic vyžaduje web server (ne otevření souboru přes file://). Obrázek se zobrazí staticky.', 7000);
+    return;
+  }
+  tainted = false; fbEl.classList.remove('on');
+
+  let n = 0;
+  for (let k = 3; k < data.length; k += 4) if (data[k] >= P.alphaCut) n++;
+
+  N = n;
+  builtW = W; builtH = H;
+  derive();
+  if (!n) return;
+  px = new Float32Array(n); py = new Float32Array(n);
+  vx = new Float32Array(n); vy = new Float32Array(n);
+  hx = new Float32Array(n); hy = new Float32Array(n);
+  col = new Uint8Array(n * 4); rb = new Float32Array(n * 3);
+  cellOf = new Int32Array(n); nextArr = new Int32Array(n);
+
+  const ox = (W - iw) / 2, oy = (H - ih) / 2;
+  let idx = 0;
+  for (let j = 0; j < rows; j++) {
+    for (let i = 0; i < cols; i++) {
+      const k = (j * cols + i) * 4;
+      if (data[k + 3] < P.alphaCut) continue;
+      hx[idx] = ox + (i + 0.5) * sx; hy[idx] = oy + (j + 0.5) * sy;
+      col[idx * 4] = data[k]; col[idx * 4 + 1] = data[k + 1];
+      col[idx * 4 + 2] = data[k + 2]; col[idx * 4 + 3] = data[k + 3];
+      idx++;
+    }
+  }
+  for (let i = 0; i < n; i++) {
+    if (scatter) { px[i] = Math.random() * W; py[i] = Math.random() * H; }
+    else { px[i] = hx[i]; py[i] = hy[i]; }
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, colBuf); gl.bufferData(gl.ARRAY_BUFFER, col, gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER, posBuf); gl.bufferData(gl.ARRAY_BUFFER, rb, gl.DYNAMIC_DRAW);
+}
+
+let rebuildTimer = 0;
+function scheduleRebuild() {
+  clearTimeout(rebuildTimer);
+  rebuildTimer = setTimeout(() => { if (!tainted && !leaving) buildParticles(false); }, 160);
+}
+
+let currentSrc = '';
+function setSource(im, scatter) {
+  currentSrc = im.src;
+  img = toCanvas(im);
+  buildParticles(scatter && P.scatterIn);
+}
+
+function loadImage(url) {
+  return new Promise((res, rej) => {
+    const im = new Image();
+    im.onload = () => res(im);
+    im.onerror = () => rej(new Error(url));
+    im.src = url;
+  });
+}
+
+/* =====================================================================
+   Fyzika
+   ===================================================================== */
+function derive() { radius = spacing * P.sizeF / 2; }
+
+function simulate(dt) {
+  const n = N; if (!n) return;
+  const e = P.rest, r = radius;
+  const gx = leaving ? 0 : P.gravX * dt, gy = leaving ? 0 : P.gravY * dt;
+  const k = leaving ? 0 : P.spring * dt;
+  const fr = leaving ? 1 : Math.pow(1 - P.friction, dt);
+  const tb = P.turb * dt;
+  const walls = P.walls && !leaving;
+
+  const inv = 1 / Math.max(dt, 0.05);
+  mvx = mvx * 0.6 + (mx - pmx) * inv * 0.4; mvy = mvy * 0.6 + (my - pmy) * inv * 0.4;
+  pmx = mx; pmy = my;
+
+  const mm = { repel: 0, attract: 1, swirl: 2, ball: 3 }[P.mouseMode];
+  const mAct = mouse.active && mm !== undefined && !leaving;
+  const R = P.mouseR, lim = mm === 3 ? R + r : R, lim2 = lim * lim, ms = P.mouseStr * 0.6;
+
+  for (let i = 0; i < n; i++) {
+    let x = px[i], y = py[i], a = vx[i], b = vy[i];
+    a += gx; b += gy;
+    if (k !== 0) { a += (hx[i] - x) * k; b += (hy[i] - y) * k; }
+    if (tb !== 0) { a += (Math.random() - 0.5) * tb; b += (Math.random() - 0.5) * tb; }
+
+    if (mAct) {
+      const dx = x - mx, dy = y - my, d2 = dx * dx + dy * dy;
+      if (d2 < lim2 && d2 > 1e-6) {
+        const d = Math.sqrt(d2), nx = dx / d, ny = dy / d;
+        if (mm === 3) {
+          x = mx + nx * lim; y = my + ny * lim;
+          const vn = (a - mvx) * nx + (b - mvy) * ny;
+          if (vn < 0) { a -= (1 + e) * vn * nx; b -= (1 + e) * vn * ny; }
+        } else {
+          const t = 1 - d / R, f = ms * t * t * dt;
+          if (mm === 0) { a += nx * f; b += ny * f; }
+          else if (mm === 1) { a -= nx * f; b -= ny * f; }
+          else { a += -ny * f - nx * f * 0.2; b += nx * f - ny * f * 0.2; }
+        }
+      }
+    }
+
+    a *= fr; b *= fr;
+    if (a > VMAX) a = VMAX; else if (a < -VMAX) a = -VMAX;
+    if (b > VMAX) b = VMAX; else if (b < -VMAX) b = -VMAX;
+    x += a * dt; y += b * dt;
+
+    if (walls) {
+      if (x < r) { x = r; if (a < 0) a = -a * e; }
+      else if (x > W - r) { x = W - r; if (a > 0) a = -a * e; }
+      if (y < r) { y = r; if (b < 0) b = -b * e; }
+      else if (y > H - r) { y = H - r; if (b > 0) b = -b * e; }
+    }
+    px[i] = x; py[i] = y; vx[i] = a; vy[i] = b;
+  }
+
+  if (!leaving && (P.collide || P.pair !== 0 || P.affinity !== 0)) collide(dt);
+}
+
+function collide(dt) {
+  const n = N, D = 2 * radius, D2 = D * D;
+  const coll = P.collide, e = P.rest, aff = P.affinity;
+  const pairOn = P.pair !== 0 || aff !== 0;
+  const reach = pairOn ? Math.max(D, P.reach * spacing) : 0;
+  const maxD = Math.max(coll ? D : 0, reach);
+  if (maxD <= 0) return;
+  const maxD2 = maxD * maxD, reach2 = reach * reach;
+  const cell = Math.max(maxD, spacing), invCell = 1 / cell;
+  const gw = Math.ceil(W / cell) + 1, gh = Math.ceil(H / cell) + 1;
+  if (head.length !== gw * gh) head = new Int32Array(gw * gh);
+  head.fill(-1);
+
+  for (let i = 0; i < n; i++) {
+    let cx = (px[i] * invCell) | 0, cy = (py[i] * invCell) | 0;
+    if (cx < 0) cx = 0; else if (cx >= gw) cx = gw - 1;
+    if (cy < 0) cy = 0; else if (cy >= gh) cy = gh - 1;
+    const c = cy * gw + cx;
+    cellOf[i] = c; nextArr[i] = head[c]; head[c] = i;
+  }
+
+  const iters = coll ? P.iters : 1;
+  const pf = P.pair, pk = 0.06 * dt;
+  for (let it = 0; it < iters; it++) {
+    const doPair = pairOn && it === 0;
+    for (let i = 0; i < n; i++) {
+      const c = cellOf[i], cx = c % gw, cy = (c / gw) | 0;
+      const x0 = cx > 0 ? cx - 1 : 0, x1 = cx < gw - 1 ? cx + 1 : cx;
+      const y0 = cy > 0 ? cy - 1 : 0, y1 = cy < gh - 1 ? cy + 1 : cy;
+      for (let yy = y0; yy <= y1; yy++) {
+        const row = yy * gw;
+        for (let xx = x0; xx <= x1; xx++) {
+          for (let j = head[row + xx]; j !== -1; j = nextArr[j]) {
+            if (j <= i) continue;
+            let dx = px[j] - px[i], dy = py[j] - py[i], d2 = dx * dx + dy * dy;
+            if (d2 >= maxD2) continue;
+            if (d2 < 1e-8) { dx = 0.01; dy = 0; d2 = 1e-4; }
+            const d = Math.sqrt(d2), nx = dx / d, ny = dy / d;
+
+            if (doPair && d2 < reach2) {
+              let f = pf;
+              if (aff !== 0) {
+                const dr = col[i * 4] - col[j * 4], dg = col[i * 4 + 1] - col[j * 4 + 1], db = col[i * 4 + 2] - col[j * 4 + 2];
+                const cd = Math.sqrt(dr * dr + dg * dg + db * db) * 0.002264;
+                f += aff * (cd * 2 - 0.5);
+              }
+              f *= (1 - d / reach) * pk;
+              vx[i] -= nx * f; vy[i] -= ny * f; vx[j] += nx * f; vy[j] += ny * f;
+            }
+
+            if (coll && d2 < D2) {
+              const ov = (D - d) * 0.5;
+              px[i] -= nx * ov; py[i] -= ny * ov; px[j] += nx * ov; py[j] += ny * ov;
+              const vn = (vx[j] - vx[i]) * nx + (vy[j] - vy[i]) * ny;
+              if (vn < 0) {
+                const imp = -(1 + e) * vn * 0.5;
+                vx[i] -= nx * imp; vy[i] -= ny * imp; vx[j] += nx * imp; vy[j] += ny * imp;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (P.walls) {
+    const r = radius;
+    for (let i = 0; i < n; i++) {
+      if (px[i] < r) px[i] = r; else if (px[i] > W - r) px[i] = W - r;
+      if (py[i] < r) py[i] = r; else if (py[i] > H - r) py[i] = H - r;
+    }
+  }
+}
+
+function burst(x, y) {
+  const R = P.mouseR * 1.4, R2 = R * R, s = P.mouseStr * 3 + 1;
+  for (let i = 0; i < N; i++) {
+    const dx = px[i] - x, dy = py[i] - y, d2 = dx * dx + dy * dy;
+    if (d2 < R2) {
+      const d = Math.sqrt(d2) + 0.001, t = 1 - d / R, f = s * t * t;
+      vx[i] += dx / d * f; vy[i] += dy / d * f;
+    }
+  }
+}
+function flyOut() {                    // všechny částice se rozlétí od středu plochy
+  const cx = W / 2, cy = H / 2;
+  for (let i = 0; i < N; i++) {
+    const dx = px[i] - cx, dy = py[i] - cy, d = Math.hypot(dx, dy) || 1;
+    const sp = 10 + Math.random() * 20;
+    vx[i] += dx / d * sp; vy[i] += dy / d * sp;
+  }
+}
+function explodeFromCenter() {
+  let cx = 0, cy = 0;
+  for (let i = 0; i < N; i++) { cx += hx[i]; cy += hy[i]; }
+  cx /= N || 1; cy /= N || 1;
+  for (let i = 0; i < N; i++) {
+    let dx = px[i] - cx, dy = py[i] - cy; const d = Math.hypot(dx, dy) || 1;
+    const sp = 4 + Math.random() * 10;
+    vx[i] += dx / d * sp; vy[i] += dy / d * sp;
+  }
+}
+function scatterRandom() {
+  for (let i = 0; i < N; i++) {
+    const a = Math.random() * 6.2832, sp = 3 + Math.random() * 12;
+    vx[i] += Math.cos(a) * sp; vy[i] += Math.sin(a) * sp;
+  }
+}
+function resetToImage() {
+  for (let i = 0; i < N; i++) { px[i] = hx[i]; py[i] = hy[i]; vx[i] = 0; vy[i] = 0; }
+}
+
+/* =====================================================================
+   Ovládací panel (hamburger menu)
+   ===================================================================== */
+const ui = {};
+function fmtVal(c, v) {
+  const dec = (String(c.step).split('.')[1] || '').length;
+  let s = (+v).toFixed(dec).replace('.', ',');
+  if (c.sign && v > 0) s = '+' + s;
+  return s + (c.unit || '');
+}
+function paintRange(inp) {
+  const p = (inp.value - inp.min) / (inp.max - inp.min) * 100;
+  inp.style.setProperty('--p', p + '%');
+}
+function setBgColor(hex) {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+  if (!m) return;
+  const r = parseInt(m[1], 16), g = parseInt(m[2], 16), b = parseInt(m[3], 16);
+  bg = [r / 255, g / 255, b / 255];
+  const light = (0.299 * r + 0.587 * g + 0.114 * b) > 150;
+  const root = document.documentElement.style;
+  root.setProperty('--bg', hex);
+  root.setProperty('--fg', light ? '#141821' : '#f2f4f8');
+  root.setProperty('--btn', light ? 'rgba(0,0,0,.08)' : 'rgba(255,255,255,.10)');
+  root.setProperty('--btn-hover', light ? 'rgba(0,0,0,.18)' : 'rgba(255,255,255,.22)');
+}
+function changed(c, v) {
+  P[c.id] = v;
+  if (c.id === 'bg') setBgColor(v);
+  if (c.rebuild) scheduleRebuild();
+  derive();
+}
+function makeControl(c) {
+  const wrap = document.createElement('div'); wrap.className = 'ctl';
+
+  if (c.type === 'check') {
+    const l = document.createElement('label'); l.className = 'chk';
+    const i = document.createElement('input'); i.type = 'checkbox'; i.checked = c.def;
+    const s = document.createElement('span'); s.textContent = c.label;
+    l.append(i, s); wrap.append(l);
+    i.addEventListener('change', () => changed(c, i.checked));
+    ui[c.id] = { set: v => { i.checked = v; } };
+  } else if (c.type === 'select') {
+    const l = document.createElement('label'); l.className = 'sel';
+    const s = document.createElement('span'); s.textContent = c.label;
+    const sel = document.createElement('select');
+    c.options.forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; sel.append(o); });
+    sel.value = c.def;
+    l.append(s, sel); wrap.append(l);
+    sel.addEventListener('change', () => changed(c, sel.value));
+    ui[c.id] = { set: v => { sel.value = v; } };
+  } else if (c.type === 'color') {
+    const row = document.createElement('div'); row.className = 'colorrow';
+    const s = document.createElement('span'); s.className = 'grow'; s.textContent = c.label;
+    const inp = document.createElement('input'); inp.type = 'color'; inp.value = c.def;
+    inp.setAttribute('aria-label', c.label);
+    const mk = (hex, name) => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'sw';
+      b.style.background = hex; b.title = name; b.setAttribute('aria-label', name);
+      b.addEventListener('click', () => { inp.value = hex; changed(c, hex); });
+      return b;
+    };
+    row.append(s, mk('#0b0d12', 'Tmavé pozadí'), mk('#f3f1ec', 'Světlé pozadí'), inp);
+    wrap.append(row);
+    inp.addEventListener('input', () => changed(c, inp.value));
+    ui[c.id] = { set: v => { inp.value = v; } };
+  } else {
+    const top = document.createElement('div'); top.className = 'top';
+    const lab = document.createElement('span'); lab.className = 'lab'; lab.textContent = c.label;
+    const out = document.createElement('output'); out.textContent = fmtVal(c, c.def);
+    top.append(lab, out);
+    const inp = document.createElement('input'); inp.type = 'range';
+    inp.min = c.min; inp.max = c.max; inp.step = c.step; inp.value = c.def;
+    inp.setAttribute('aria-label', c.label);
+    paintRange(inp);
+    wrap.append(top, inp);
+    if (c.hint) { const h = document.createElement('p'); h.className = 'hint'; h.textContent = c.hint; wrap.append(h); }
+    inp.addEventListener('input', () => { out.textContent = fmtVal(c, inp.value); paintRange(inp); changed(c, +inp.value); });
+    ui[c.id] = { set: v => { inp.value = v; out.textContent = fmtVal(c, v); paintRange(inp); } };
+  }
+  return wrap;
+}
+function buildUI() {
+  const host = $('#controls');
+  SECTIONS.forEach(sec => {
+    const d = document.createElement('details'); if (sec.open) d.open = true;
+    const s = document.createElement('summary'); s.textContent = sec.title;
+    const body = document.createElement('div'); body.className = 'body';
+    sec.controls.forEach(c => body.append(makeControl(c)));
+    d.append(s, body); host.append(d);
+  });
+  const pr = $('#presets');
+  Object.keys(PRESETS).forEach(name => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.textContent = name;
+    b.addEventListener('click', () => applyPreset(name));
+    pr.append(b);
+  });
+}
+function setControlValue(id, v) { P[id] = v; if (ui[id]) ui[id].set(v); }
+function applyPreset(name) {
+  SECTIONS.filter(s => s.reset).forEach(s => s.controls.forEach(c => setControlValue(c.id, c.def)));
+  Object.entries(PRESETS[name]).forEach(([id, v]) => setControlValue(id, v));
+  scheduleRebuild();
+  derive();
+}
+function syncControlsFromP() {
+  Object.keys(ui).forEach(id => { if (id in P) ui[id].set(P[id]); });
+}
+
+/* --- Zkopírovat nastavení aktuálního obrázku do jeho config souboru --- */
+function fmtJSValue(v) {
+  return typeof v === 'string' ? `'${String(v).replace(/'/g, "\\'")}'` : String(v);
+}
+function buildConfigCode(file) {
+  const keys = Object.keys(DEF);
+  const body = keys.map(k => '  ' + k + ': ' + fmtJSValue(P[k])).join(',\n');
+  return "window.PORTFOLIO_ITEM_CONFIGS = window.PORTFOLIO_ITEM_CONFIGS || {};\n" +
+    "window.PORTFOLIO_ITEM_CONFIGS['" + file + "'] = {\n" + body + "\n};\n";
+}
+const copyBox = $('#copyBox'), copyTextEl = $('#copyText');
+async function copyCurrentSettings() {
+  const e = entries[cur];
+  if (!e) return;
+  const code = buildConfigCode(e.file);
+  const target = folder + stripExt(e.file) + '_config.js';
+  let ok = false;
+  try { await navigator.clipboard.writeText(code); ok = true; } catch (_) {}
+  if (!ok) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = code; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+    } catch (_) {}
+  }
+  if (ok) {
+    copyBox.hidden = true;
+    toast('Zkopírováno do schránky – vlož do ' + target);
+  } else {
+    copyTextEl.value = code;
+    copyBox.hidden = false;
+    copyTextEl.focus(); copyTextEl.select();
+    toast('Zkopíruj ručně (Ctrl/Cmd+C) a ulož do ' + target, 6000);
+  }
+}
+$('#bCopy').addEventListener('click', copyCurrentSettings);
+
+function updatePanelHeader() {
+  const e = entries[cur];
+  if (!e) return;
+  $('#panelTitle').textContent = 'Nastavení – ' + (e.title || e.file);
+  $('#copyHint').textContent = 'Cíl: ' + folder + stripExt(e.file) + '_config.js';
+  copyBox.hidden = true;
+}
+
+/* --- otevírání/zavírání panelu --- */
+const panelEl = $('#panel'), scrimEl = $('#scrim'), bMenu = $('#bMenu'), bClose = $('#bClose');
+function openPanel() {
+  panelEl.classList.add('open'); scrimEl.classList.add('on');
+  bMenu.setAttribute('aria-expanded', 'true');
+}
+function closePanel() {
+  panelEl.classList.remove('open'); scrimEl.classList.remove('on');
+  bMenu.setAttribute('aria-expanded', 'false');
+}
+bMenu.addEventListener('click', () => { panelEl.classList.contains('open') ? closePanel() : openPanel(); });
+bClose.addEventListener('click', closePanel);
+scrimEl.addEventListener('click', closePanel);
+
+/* --- akční tlačítka (pozastavit / složit / výbuch / rozprášit) --- */
+const bPause = $('#bPause');
+function togglePause() {
+  paused = !paused;
+  bPause.textContent = paused ? 'Pokračovat' : 'Pozastavit';
+  bPause.setAttribute('aria-pressed', String(paused));
+}
+bPause.addEventListener('click', togglePause);
+$('#bReset').addEventListener('click', () => { if (N) resetToImage(); });
+$('#bBoom').addEventListener('click', () => { if (N) explodeFromCenter(); });
+$('#bScatter').addEventListener('click', () => { if (N) scatterRandom(); });
+
+/* =====================================================================
+   Popisek, přepínání projektů
+   ===================================================================== */
+function applySettings(s) {
+  Object.assign(P, s);
+  setBgColor(P.bg);
+  derive();
+}
+
+function applyBackground(src) {
+  hasBgImage = !!src;
+  if (src) { bgImgEl.src = src; bgImgEl.style.display = 'block'; }
+  else { bgImgEl.removeAttribute('src'); bgImgEl.style.display = 'none'; }
+}
+
+function updateCaption(e) {
+  capEl.textContent = '';
+  if (e.title) { const b = document.createElement('b'); b.textContent = e.title; capEl.append(b); }
+  if (e.url && C.hint) { const s = document.createElement('span'); s.textContent = C.hint; capEl.append(s); }
+}
+
+let toastTimer = 0;
+function toast(msg, ms) {
+  toastEl.textContent = msg; toastEl.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.classList.remove('show'), ms || 3500);
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+let cur = -1, token = 0;
+async function show(i) {
+  const my = ++token;
+  const first = cur < 0;
+  const before = cur;
+  const e = entries[i];
+  cur = i;
+  updateCaption(e);
+
+  const imgP = loadImage(e.src);
+  imgP.catch(() => {});                       // chybu ošetříme až níž
+  let wait = Promise.resolve();
+  if (!first && N > 0 && C.transitionOutMs > 0 && !reduceMotion) {
+    leaving = true; flyOut(); wait = sleep(C.transitionOutMs);
+  }
+  let im;
+  try { [im] = await Promise.all([imgP, wait]); }
+  catch (err) {
+    if (my !== token) return;
+    leaving = false;
+    toast('Nepodařilo se načíst ' + e.src);
+    if (before >= 0) { cur = before; updateCaption(entries[before]); }
+    return;
+  }
+  if (my !== token) return;
+  leaving = false;
+  applySettings(e.settings);
+  applyBackground(e.bgSrc);
+  syncControlsFromP();
+  updatePanelHeader();
+  setSource(im, true);
+}
+
+function step(dir) {
+  const n = entries.length;
+  if (n < 2) return;
+  let i = cur + dir;
+  if (C.loop === false) { if (i < 0 || i >= n) return; }
+  else i = (i + n) % n;
+  show(i);
+}
+prevBtn.addEventListener('click', () => step(-1));
+nextBtn.addEventListener('click', () => step(1));
+window.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft') step(-1);
+  else if (e.key === 'ArrowRight') step(1);
+  else if (e.key === 'Escape') closePanel();
+  else if (e.code === 'Space' && !/^(INPUT|SELECT|BUTTON|TEXTAREA)$/.test(document.activeElement.tagName)) {
+    e.preventDefault(); togglePause();
+  }
+});
+
+/* =====================================================================
+   Myš, pravé tlačítko, dlouhý stisk
+   ===================================================================== */
+function openUrl(url) {
+  if (!url) return;
+  if (C.openInNewTab) window.open(url, '_blank', 'noopener');
+  else location.href = url;
+}
+
+function setMouse(e) {
+  const r = cv.getBoundingClientRect();
+  mx = e.clientX - r.left; my = e.clientY - r.top;
+  if (!mouse.active) { pmx = mx; pmy = my; mvx = mvy = 0; }
+  mouse.active = true;
+}
+
+let lastPointerType = 'mouse', pressTimer = 0, pressX = 0, pressY = 0;
+const cancelPress = () => { clearTimeout(pressTimer); pressTimer = 0; };
+
+cv.addEventListener('pointermove', e => {
+  setMouse(e);
+  if (pressTimer && Math.hypot(e.clientX - pressX, e.clientY - pressY) > 12) cancelPress();
+});
+cv.addEventListener('pointerdown', e => {
+  lastPointerType = e.pointerType;
+  try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+  setMouse(e);
+  if (e.button === 0 && P.clickBurst && N) burst(mx, my);
+  if (e.pointerType === 'touch') {                 // dlouhý stisk = pravé tlačítko
+    cancelPress(); pressX = e.clientX; pressY = e.clientY;
+    pressTimer = setTimeout(() => { pressTimer = 0; openUrl(entries[cur] && entries[cur].url); }, C.longPressMs || 600);
+  }
+});
+const endPointer = e => {
+  cancelPress();
+  if (e.type === 'pointerleave' ? e.pointerType === 'mouse' : e.pointerType !== 'mouse') mouse.active = false;
+};
+cv.addEventListener('pointerup', endPointer);
+cv.addEventListener('pointercancel', endPointer);
+cv.addEventListener('pointerleave', endPointer);
+
+cv.addEventListener('contextmenu', e => {
+  e.preventDefault();                               // žádné kontextové menu prohlížeče
+  if (lastPointerType === 'touch') return;          // na dotyku řeší dlouhý stisk
+  openUrl(entries[cur] && entries[cur].url);
+});
+
+/* =====================================================================
+   Velikost plochy a hlavní smyčka
+   ===================================================================== */
+function resize() {
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = Math.max(50, Math.floor(window.innerWidth)); H = Math.max(50, Math.floor(window.innerHeight));
+  cv.width = Math.floor(W * dpr); cv.height = Math.floor(H * dpr);
+  gl.viewport(0, 0, cv.width, cv.height);
+}
+window.addEventListener('resize', () => {
+  resize();
+  if (img && (W !== builtW || H !== builtH)) scheduleRebuild();
+});
+
+let last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  const el = Math.min(now - last, 100); last = now;
+  if (!paused && N) simulate(Math.min(2, Math.max(0.25, el / 16.667)) * P.speed);
+  draw();
+}
+
+/* start: doběhne per-PNG configy, postaví panel a načte se Intro */
+boot();
+})();
+</script>
+</body>
+</html>
